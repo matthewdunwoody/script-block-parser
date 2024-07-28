@@ -16,10 +16,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#   Version 1.0
+#   Version 1.2
+
+# Change log
+# V1.1 - updated to Py3,  AlexSchrichte
+# V1.2 - added option to output into an encrypted zip, Phill Moore
+
+
 import os
 from re import I
-import sys
 import argparse
 import traceback
 from typing import Generator, Iterable
@@ -29,7 +34,14 @@ from lxml import etree
 
 from Evtx.Evtx import Evtx
 from Evtx.Views import evtx_file_xml_view
+import pyzipper
 
+# zip password needs to be in bytes
+def get_zip_password_as_bytes():
+    return b"infected"
+
+def get_default_zip_filename():
+    return "encrypted.zip"
 
 def to_lxml(record_xml):
     """
@@ -160,6 +172,7 @@ def process_entries(
     entries: list[Entry],
     script_id: str,
     all_blocks: bool,
+    zipname:str,
     output_dir: str,
     filename: str,
     output_to_csv: bool,
@@ -181,12 +194,13 @@ def process_entries(
             if script_block_entry.script_block_id not in metadata:
                 metadata[script_block_entry.script_block_id] = script_block_entry
 
-    output_result(blocks, metadata, output_dir, filename, output_to_csv)
+    output_result(blocks, metadata, zipname, output_dir, filename, output_to_csv)
 
 
 def output_result(
     blocks: defaultdict[list],
     metadata: dict,
+    output_zip: str,
     output_dir: str,
     output_file: str,
     output_to_csv: bool,
@@ -215,17 +229,35 @@ def output_result(
                     f.write("".join(blocks[script_block_id]))
         elif output_dir:
             # output_dir = output_dir.replace("\\\\", "\\")
-            print(output_dir)
+            print("Extracting available scripts to " + output_dir)
             if not os.path.isdir(output_dir):
                 os.makedirs(output_dir)
             keys = blocks.keys()
+
+            # If outputing to a zip, open a zip object
+            if (output_zip):
+                zippath = os.path.join(output_dir, get_default_zip_filename())
+                f = pyzipper.AESZipFile(zippath, 'w', compression=pyzipper.ZIP_LZMA, encryption=pyzipper.WZ_AES)
+                f.setpassword(get_zip_password_as_bytes())  # Set your desired password
+            
             for script_block_id in keys:
                 if metadata[script_block_id].message_number > 1:
                     x = "-partial"
                 else:
                     x = ""
-                f = open(os.path.join(output_dir, script_block_id + x + ".ps1_"), "w")
-                f.write("".join(blocks[script_block_id]))
+                
+                filename = script_block_id + x + ".ps1_"
+                filecontents = "".join(blocks[script_block_id])
+                if output_zip:
+                    print (f"Adding {filename} to zip")
+                    f.writestr(filename, filecontents.encode('utf-8'))
+                else:
+                    print (f"Writing {script_block_id} to file")
+                    with open(os.path.join(output_dir, filename), "w") as f:
+                        f.write(filecontents)
+                        f.close()
+    
+            if (output_zip):
                 f.close()
 
         if output_to_csv:
@@ -267,10 +299,16 @@ def main():
         help="Write blocks to a single file. Specify output file.",
     )
     parser.add_argument(
+        "-z",
+        "--zip",
+        action="store_true",
+        help="Write blocks to an encrypted zip, default password is 'infected'. Use in combination with -o",
+    )
+    parser.add_argument(
         "-o",
         "--outdir",
         type=str,
-        help="Output directory for script blocks as ps1 files.",
+        help="Output directory for script blocks as ps1 files or encrypted zip.",
     )
     parser.add_argument("-a", "--all", action="store_true", help="Output all blocks.")
     args = parser.parse_args()
@@ -279,12 +317,13 @@ def main():
         parser.error(
             "Output format required. Use -f to write all blocks to a single file, or -o to output all blocks as .ps1 files in the specified directory."
         )
-    print(args.outdir)
+
     with Evtx(args.evtx) as evtx:
         process_entries(
             get_entries_with_matching_event_ids(evtx, set([4104])),
             args.scriptid,
             args.all,
+            args.zip,
             args.outdir,
             args.file,
             args.metadata,
