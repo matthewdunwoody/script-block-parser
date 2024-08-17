@@ -216,7 +216,7 @@ def output_result(
     output_to_csv: bool,
 ):
     divider = "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
-    header = "Script Block ID,Timestamp,Level,Message Total,Computer,First Message Number"
+    header = "Script Block ID,Timestamp,Level,Message Total,Computer,First Message Number,SID"
 
     if blocks:
         if output_file:
