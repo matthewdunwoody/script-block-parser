@@ -193,7 +193,7 @@ def process_entries(
     for entry in entries:
         script_block_entry = entry.get_script_block_entry()
         if script_id == script_block_entry.script_block_id or (
-            (all_blocks or script_block_entry.message_total > 1) and script_id == None
+            (all_blocks or script_block_entry.message_total >= 1) and script_id == None
         ):
             blocks[script_block_entry.script_block_id].insert(
                 script_block_entry.message_number,
