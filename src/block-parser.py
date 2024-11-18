@@ -186,6 +186,7 @@ def process_entries(
     output_dir: str,
     filename: str,
     output_to_csv: bool,
+    add_timestamp: bool
 ):
     blocks = defaultdict(list)
     metadata = {}
@@ -204,7 +205,7 @@ def process_entries(
             if script_block_entry.script_block_id not in metadata:
                 metadata[script_block_entry.script_block_id] = script_block_entry
 
-    output_result(blocks, metadata, zipname, output_dir, filename, output_to_csv)
+    output_result(blocks, metadata, zipname, output_dir, filename, output_to_csv, add_timestamp)
 
 
 def output_result(
@@ -214,6 +215,7 @@ def output_result(
     output_dir: str,
     output_file: str,
     output_to_csv: bool,
+    add_timestamp: bool
 ):
     divider = "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
     header = "Script Block ID,Timestamp,Level,Message Total,Computer,First Message Number"
@@ -255,18 +257,18 @@ def output_result(
                     x = "-partial"
                 else:
                     x = ""
-                
+                if add_timestamp:
+                    x += f".{str(metadata[script_block_id].timestamp).replace(":", "_")}"
                 filename = script_block_id + x + ".ps1_"
                 filecontents = "".join(blocks[script_block_id])
                 if output_zip:
                     print (f"Adding {filename} to zip")
                     f.writestr(filename, filecontents.encode('utf-8', 'ignore'))
                 else:
-                    print (f"Writing {script_block_id} to file")
+                    print (f"Writing {filename} to file")
                     with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
                         f.write(filecontents)
-                        f.close()
-    
+
             if output_zip:
                 f.close()
 
@@ -309,6 +311,12 @@ def main():
         help="Write blocks to a single file. Specify output file.",
     )
     parser.add_argument(
+        "-t",
+        "--timestamp",
+        action="store_true",
+        help="Append timestamp of event to file name. (not enabled by default)",
+    )
+    parser.add_argument(
         "-z",
         "--zip",
         action="store_true",
@@ -337,6 +345,7 @@ def main():
             args.outdir,
             args.file,
             args.metadata,
+            args.timestamp
         )
         pass
 
