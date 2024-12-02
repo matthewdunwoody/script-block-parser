@@ -1,0 +1,3 @@
+lxml==5.2.2
+python-evtx==0.7.4
+pyzipper
