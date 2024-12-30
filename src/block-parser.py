@@ -258,7 +258,7 @@ def output_result(
                 else:
                     x = ""
                 if add_timestamp:
-                    x += f".{str(metadata[script_block_id].timestamp).replace(":", "_")}"
+                    x += f".{str(metadata[script_block_id].timestamp).replace(':', '_')}"
                 filename = script_block_id + x + ".ps1_"
                 filecontents = "".join(blocks[script_block_id])
                 if output_zip:
